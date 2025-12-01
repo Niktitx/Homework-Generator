@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Генератор ДЗ</title>
+<style>
+  /* Сброс и базовые стили */
+  *,
+  *::before,
+  *::after { box-sizing: border-box; }
+
+  html {
+    background: linear-gradient(160deg, #071614 0%, #08302b 100%);
+    background-attachment: fixed;
+    height: 100%;
+  }
+  body {
+    background: transparent;   /* убираем фон с body */
+    min-height: 100%;
+    font-family: Inter, Arial, sans-serif;
+    background: linear-gradient(160deg, #071614 0%, #08302b 100%);
+    background-attachment: fixed;
+    color: #e9f7f4;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* важно! */
+  }
+
+  /* Главный контейнер теперь flex и растягивается на всю высоту */
+  .container {
+    flex: 1;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 24px 18px 60px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .header { 
+    text-align: center; 
+    margin-bottom: 20px; 
+  }
+
+  h1 { 
+    margin: 0; 
+    font-size: 30px; 
+    font-weight: 600; 
+  }
+
+  .toolbar { 
+    display: flex; 
+    gap: 12px; 
+    justify-content: center; 
+    align-items: center; 
+    margin: 20px 0 30px; 
+    flex-wrap: wrap;
+  }
+
+  .week-wrapper { 
+    position: relative; 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+  }
+
+  .week-label { 
+    cursor: help; 
+    user-select: none; 
+    font-size: 16px; 
+    color: #c9efe6; 
+  }
+
+  .week-tip {
+    display: none;
+    position: absolute;
+    top: 36px;
+    left: 0;
+    background: rgba(6,34,31,0.95);
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(31,90,82,0.2);
+    font-size: 13px;
+    width: 240px;
+    line-height: 1.4;
+    z-index: 10;
+  }
+
+  .week-wrapper:hover .week-tip { 
+    display: block; 
+  }
+
+  input[type=number] {
+    width: 80px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(31,90,82,0.3);
+    background: rgba(8,30,27,0.6);
+    color: #eafcf8;
+    font-size: 16px;
+    text-align: center;
+  }
+
+  button {
+    background: linear-gradient(180deg, #0fb092, #07886f);
+    border: none;
+    padding: 11px 20px;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform .12s;
+  }
+
+  button:hover { opacity: 0.9; }
+  button:active { transform: translateY(1px); }
+
+  /* Карточки — адаптивная сетка */
+  .days {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 24px;
+    flex: 1; /* позволяет карточкам растягивать контейнер */
+  }
+
+  .card {
+    background: linear-gradient(180deg, rgba(7,34,31,0.45), rgba(5,25,22,0.35));
+    border: 1px solid rgba(31,90,82,0.18);
+    border-radius: 14px;
+    padding: 18px;
+    transition: transform .15s, box-shadow .15s;
+  }
+
+  .card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 14px 32px rgba(2,50,45,0.3);
+  }
+
+  .card-title {
+    font-weight: 700;
+    margin-bottom: 14px;
+    font-size: 18px;
+    border-bottom: 1px solid rgba(31,90,82,0.15);
+    padding-bottom: 8px;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+  }
+
+  .table td {
+    padding: 9px 6px;
+    vertical-align: top;
+  }
+
+  .subject { 
+    color: #bfeee6; 
+    width: 38%; 
+  }
+
+  .task { 
+    color: #eafcf8; 
+    width: 62%; 
+  }
+
+  .empty {
+    color: #8aa49f;
+    font-style: italic;
+    text-align: center;
+    padding: 20px 0;
+  }
+
+  .footer-note {
+    text-align: center;
+    margin-top: 40px;
+    color: #9fc9c1;
+    font-size: 13px;
+    opacity: 0.9;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>Генератор домашнего задания</h1>
+  </div>
+
+  <div class="toolbar">
+    <div class="week-wrapper">
+      <div class="week-label">Неделя</div>
+      <div class="week-tip">
+        Номер параграфа по предмету, который проводится <strong>1 раз</strong> в неделю.
+      </div>
+    </div>
+    <input id="week" type="number" min="1" max="52" value="1" />
+    <button id="btn">Сгенерировать</button>
+  </div>
+
+  <div id="days" class="days">
+    <!-- Карточки появятся здесь -->
+  </div>
+
+
+</div>
+
+<script>
+document.getElementById('btn').addEventListener('click', generate);
+
+async function generate() {
+  const weekInput = document.getElementById('week');
+  const week = Number(weekInput.value);
+
+  if (!Number.isInteger(week) || week < 1 || week > 52) {
+    alert('Неделя должна быть целым числом от 1 до 52');
+    return;
+  }
+
+  try {
+    const resp = await fetch(`/generate?week=${encodeURIComponent(week)}`);
+    if (!resp.ok) throw new Error('Network response was not ok: ' + resp.status);
+    const data = await resp.json();
+    renderDays(data.days || []);
+  } catch (err) {
+    console.error('Fetch error:', err);
+    alert('Ошибка при запросе. Откройте консоль (F12).');
+  }
+}
+
+function renderDays(days) {
+  const container = document.getElementById('days');
+  container.innerHTML = '';
+
+  if (!days.length) {
+    container.innerHTML = `
+      <div class="card">
+        <div class="card-title">Нет данных</div>
+        <div class="empty">Пустой график или не найден schedule.txt</div>
+      </div>`;
+    return;
+  }
+
+  for (const day of days) {
+    let rows = '';
+    if (day.tasks && day.tasks.length) {
+      for (const t of day.tasks) {
+        rows += `<tr>
+          <td class="subject">${escapeHtml(t.subject || '')}</td>
+          <td class="task">${escapeHtml(t.task || '')}</td>
+        </tr>`;
+      }
+    } else {
+      rows = `<tr><td class="empty" colspan="2">Нет уроков</td></tr>`;
+    }
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-title">${escapeHtml(day.name || 'День')}</div>
+      <table class="table">${rows}</table>
+    `;
+    container.appendChild(card);
+  }
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML = div.innerHTML
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>
